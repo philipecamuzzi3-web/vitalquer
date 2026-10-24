@@ -1,0 +1,734 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VitalQuer IA — Evoluções de Pacientes</title>
+<style>
+  :root{
+    --azul:#1a5fb4; --azul-esc:#123c73; --verde:#26a269; --bg:#f4f6f9;
+    --card:#ffffff; --texto:#1c2b3a; --cinza:#6b7a8c; --borda:#dde4ec;
+    --ger:#7d5ba6; --clin:#1a5fb4; --ia:#c05621;
+  }
+  *{box-sizing:border-box; margin:0; padding:0; font-family:'Segoe UI',system-ui,sans-serif;}
+  body{background:var(--bg); color:var(--texto); min-height:100vh;}
+  header{background:linear-gradient(135deg,var(--azul),var(--azul-esc)); color:#fff; padding:18px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:10px;}
+  header h1{font-size:1.3rem; font-weight:600;}
+  header .sub{font-size:.8rem; opacity:.85;}
+  .btn{border:none; border-radius:8px; padding:9px 16px; font-size:.9rem; cursor:pointer; font-weight:600; transition:.15s;}
+  .btn:disabled{opacity:.55; cursor:wait;}
+  .btn-primario{background:var(--azul); color:#fff;}
+  .btn-primario:hover{background:var(--azul-esc);}
+  .btn-sec{background:#e8eef6; color:var(--azul-esc);}
+  .btn-sec:hover{background:#d8e3f0;}
+  .btn-perigo{background:#fbe9e7; color:#c0392b;}
+  .btn-verde{background:var(--verde); color:#fff;}
+  .btn-ia{background:var(--ia); color:#fff;}
+  .btn-ia:hover{background:#9c421a;}
+  main{max-width:1100px; margin:0 auto; padding:20px 16px 60px;}
+  .toolbar{display:flex; gap:10px; flex-wrap:wrap; margin-bottom:16px; align-items:center;}
+  .busca{flex:1; min-width:200px; padding:10px 14px; border:1px solid var(--borda); border-radius:8px; font-size:.95rem;}
+  .grid-pacientes{display:grid; grid-template-columns:repeat(auto-fill,minmax(280px,1fr)); gap:14px;}
+  .card-pac{background:var(--card); border:1px solid var(--borda); border-radius:12px; padding:16px; cursor:pointer; transition:.15s; position:relative;}
+  .card-pac:hover{box-shadow:0 4px 14px rgba(26,95,180,.12); transform:translateY(-2px);}
+  .card-pac h3{font-size:1.05rem; margin-bottom:4px;}
+  .card-pac .meta{font-size:.82rem; color:var(--cinza); margin-bottom:8px;}
+  .badge{display:inline-block; font-size:.72rem; padding:3px 10px; border-radius:20px; font-weight:600; margin-right:5px;}
+  .badge-clin{background:#e3edf9; color:var(--clin);}
+  .badge-ger{background:#efe8f7; color:var(--ger);}
+  .badge-alerta{background:#fdecea; color:#c0392b;}
+  .card-pac .num-evo{position:absolute; top:14px; right:14px; background:var(--azul); color:#fff; border-radius:20px; font-size:.72rem; padding:3px 9px; font-weight:700;}
+  .vazio{text-align:center; color:var(--cinza); padding:50px 20px; background:var(--card); border:1px dashed var(--borda); border-radius:12px;}
+  /* Modal */
+  .modal-bg{position:fixed; inset:0; background:rgba(15,30,50,.55); display:none; align-items:flex-start; justify-content:center; padding:30px 14px; overflow-y:auto; z-index:50;}
+  .modal-bg.aberto{display:flex;}
+  .modal{background:var(--card); border-radius:14px; width:100%; max-width:760px; padding:24px; margin-bottom:40px;}
+  .modal h2{font-size:1.15rem; margin-bottom:16px; color:var(--azul-esc);}
+  .campo{margin-bottom:13px;}
+  .campo label{display:block; font-size:.82rem; font-weight:600; margin-bottom:5px; color:var(--azul-esc);}
+  .campo input,.campo select,.campo textarea{width:100%; padding:10px 12px; border:1px solid var(--borda); border-radius:8px; font-size:.92rem; background:#fbfcfe;}
+  .campo textarea{resize:vertical; min-height:70px;}
+  .linha{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  .linha3{display:grid; grid-template-columns:2fr 1fr 1fr; gap:10px; align-items:end;}
+  @media(max-width:600px){.linha,.linha3{grid-template-columns:1fr;}}
+  .acoes-modal{display:flex; gap:10px; justify-content:flex-end; margin-top:18px; flex-wrap:wrap;}
+  .dica{background:#fff8ec; border:1px solid #f0dcb0; color:#7a5c13; border-radius:8px; padding:10px 14px; font-size:.83rem; margin-bottom:14px; line-height:1.5;}
+  /* Ficha */
+  .cabecalho-ficha{background:var(--card); border:1px solid var(--borda); border-radius:12px; padding:18px; margin-bottom:16px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:12px;}
+  .cabecalho-ficha h2{color:var(--azul-esc);}
+  .dados-pac{font-size:.85rem; color:var(--cinza); margin-top:6px; line-height:1.6;}
+  .evolucao{background:var(--card); border:1px solid var(--borda); border-radius:12px; padding:16px; margin-bottom:12px;}
+  .evolucao .topo{display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; margin-bottom:10px;}
+  .evolucao .data{font-weight:700; font-size:.9rem; color:var(--azul-esc);}
+  .evolucao dl{font-size:.9rem;}
+  .evolucao dt{font-weight:600; color:var(--azul); margin-top:8px; font-size:.78rem; text-transform:uppercase; letter-spacing:.4px;}
+  .evolucao dd{margin-top:2px; white-space:pre-wrap;}
+  .evolucao .acoes-evo{display:flex; gap:8px;}
+  .mini{font-size:.78rem; padding:6px 12px;}
+  /* Plano de tratamento */
+  .plano{background:var(--card); border:2px solid var(--azul); border-radius:12px; padding:18px; margin-bottom:16px;}
+  .plano h3{color:var(--azul-esc); font-size:1.05rem; margin-bottom:4px;}
+  .plano .sub-plano{font-size:.8rem; color:var(--cinza); margin-bottom:12px;}
+  .plano-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
+  @media(max-width:700px){.plano-grid{grid-template-columns:1fr;}}
+  .plano-bloco{background:#f8fafd; border:1px solid var(--borda); border-radius:10px; padding:12px;}
+  .plano-bloco h4{font-size:.78rem; text-transform:uppercase; letter-spacing:.4px; color:var(--azul); margin-bottom:6px;}
+  .plano-bloco p{font-size:.88rem; white-space:pre-wrap; line-height:1.5;}
+  .plano-bloco p.vazio-p{color:var(--cinza); font-style:italic;}
+  .item-plano{display:flex; align-items:center; gap:10px; padding:8px 0; border-bottom:1px solid var(--borda); font-size:.88rem;}
+  .item-plano:last-child{border-bottom:none;}
+  .st{border:none; border-radius:20px; font-size:.7rem; font-weight:700; padding:4px 10px; cursor:pointer; min-width:86px;}
+  .st0{background:#fdecea; color:#c0392b;}
+  .st1{background:#fff3d6; color:#9a6b00;}
+  .st2{background:#e2f3ea; color:#1e7a4d;}
+  .item-plano .desc{flex:1;}
+  .item-plano .tag{font-size:.7rem; background:#e3edf9; color:var(--clin); border-radius:12px; padding:2px 8px; font-weight:600;}
+  .item-plano .prazo{font-size:.75rem; color:var(--cinza);}
+  .del-x{background:none; border:none; color:var(--cinza); cursor:pointer; font-size:1rem; padding:2px 6px;}
+  .del-x:hover{color:#c0392b;}
+  /* Gravação */
+  .gravando-dot{display:inline-block; width:10px; height:10px; border-radius:50%; background:#e01b24; margin-right:6px; animation:pulsa 1s infinite;}
+  @keyframes pulsa{50%{opacity:.3;}}
+  /* Modo voz contínuo */
+  #barraVoz{position:fixed; bottom:0; left:0; right:0; background:var(--azul-esc); color:#fff; display:none; align-items:center; gap:14px; padding:12px 18px; z-index:60; box-shadow:0 -4px 14px rgba(0,0,0,.28);}
+  #barraVoz.ativo{display:flex;}
+  #vozTexto{flex:1; font-size:.9rem; line-height:1.45; min-width:0;}
+  #vozTexto .ouvido{color:#ffd6a5; font-style:italic;}
+  #vozTexto .cmd{color:#8ff0b6; font-weight:600;}
+  #toast{position:fixed; bottom:24px; left:50%; transform:translateX(-50%); background:var(--texto); color:#fff; padding:11px 22px; border-radius:10px; font-size:.88rem; opacity:0; pointer-events:none; transition:.3s; z-index:99; max-width:90vw;}
+  #toast.mostra{opacity:1;}
+  @media print{
+    header,.toolbar,.btn,.acoes-evo,.btns-ficha,.del-x,.st{display:none!important;}
+    body{background:#fff;}
+    .evolucao,.plano{border:none; page-break-inside:avoid;}
+    .plano{border:1px solid #999;}
+  }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>🩺 VitalQuer IA</h1>
+    <div class="sub">Consulta com escuta por IA + evolução SOAP + plano de tratamento · Dr. Camuzzi</div>
+  </div>
+  <div style="display:flex;gap:8px;flex-wrap:wrap">
+    <button class="btn btn-sec" onclick="abrirConfig()">⚙️ IA</button>
+    <button class="btn btn-primario" id="btnVoz" onclick="alternarVozContinua()">🎤 Modo voz</button>
+    <button class="btn btn-sec" onclick="exportarBackup()">💾 Backup</button>
+    <button class="btn btn-sec" onclick="document.getElementById('importa').click()">📂 Restaurar</button>
+    <input type="file" id="importa" accept=".json" style="display:none" onchange="importarBackup(this)">
+    <button class="btn btn-primario" onclick="abrirModalPaciente()">+ Novo paciente</button>
+  </div>
+</header>
+
+<main id="conteudo"></main>
+
+<!-- Modal paciente -->
+<div class="modal-bg" id="modalPac">
+  <div class="modal">
+    <h2 id="tituloModalPac">Novo paciente</h2>
+    <div class="linha">
+      <div class="campo"><label>Nome completo *</label><input id="pNome" placeholder="Nome do paciente"></div>
+      <div class="campo"><label>Data de nascimento</label><input id="pNasc" type="date"></div>
+    </div>
+    <div class="linha">
+      <div class="campo"><label>Telefone</label><input id="pTel" placeholder="(22) 99999-9999"></div>
+      <div class="campo"><label>Sexo</label><select id="pSexo"><option value="">—</option><option>Feminino</option><option>Masculino</option></select></div>
+    </div>
+    <div class="campo"><label>Comorbidades / condições</label><textarea id="pComorb" rows="2" placeholder="Ex.: HAS, DM2, hipotireoidismo…"></textarea></div>
+    <div class="campo"><label>Medicamentos em uso</label><textarea id="pMedic" rows="2" placeholder="Ex.: Losartana 50mg 1x/dia…"></textarea></div>
+    <div class="campo"><label>Alergias</label><input id="pAlergia" placeholder="Ex.: dipirona, nenhuma conhecida"></div>
+    <div class="campo"><label>Observações gerais</label><textarea id="pObs" rows="2" placeholder="Peso habitual, contexto familiar, preferências…"></textarea></div>
+    <div class="acoes-modal">
+      <button class="btn btn-sec" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-primario" onclick="salvarPaciente()">Salvar paciente</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal consulta com IA -->
+<div class="modal-bg" id="modalConsulta">
+  <div class="modal">
+    <h2 id="tituloModalConsulta">🎙️ Consulta com IA</h2>
+    <div class="dica" id="dicaMic">Clique em <b>🎙️ Iniciar escuta</b> e converse normalmente com o paciente — o navegador transcreve a conversa ao vivo em português. No final, clique em <b>✨ Montar evolução com IA</b>. Funciona melhor no Chrome/Edge. Você também pode colar a transcrição manualmente.</div>
+    <div class="campo">
+      <label>Transcrição da conversa</label>
+      <textarea id="transc" rows="8" placeholder="A conversa aparece aqui conforme você fala… ou cole aqui uma transcrição."></textarea>
+    </div>
+    <div class="acoes-modal" style="justify-content:flex-start">
+      <button class="btn btn-perigo" id="btnMic" onclick="toggleMic()">🎙️ Iniciar escuta</button>
+      <button class="btn btn-ia" id="btnIA" onclick="gerarComIA()">✨ Montar evolução com IA</button>
+      <button class="btn btn-sec" onclick="copiarPrompt()">📋 Copiar prompt p/ outra IA</button>
+    </div>
+    <div class="campo" style="margin-top:14px">
+      <label>Sem chave de IA? Cole aqui a resposta de outra IA (Adapta, ChatGPT…) e clique no botão abaixo</label>
+      <textarea id="respostaIA" rows="5" placeholder="Cole aqui o JSON ou o texto gerado pela IA…"></textarea>
+    </div>
+    <div class="acoes-modal">
+      <button class="btn btn-sec" onclick="usarRespostaColada()">⬇️ Usar resposta colada</button>
+      <button class="btn btn-sec" onclick="fecharModais()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal plano de tratamento -->
+<div class="modal-bg" id="modalPlano">
+  <div class="modal">
+    <h2 id="tituloModalPlano">📋 Plano de tratamento</h2>
+    <div class="campo"><label>Objetivos do tratamento</label><textarea id="plObj" rows="2" placeholder="Ex.: controle pressórico, perda de 5 kg em 3 meses, rastreio de quedas…"></textarea></div>
+    <div class="campo"><label>Metas terapêuticas (uma por linha)</label><textarea id="plMetas" rows="3" placeholder="PA &lt; 130/80 mmHg&#10;HbA1c &lt; 7%&#10;IMC &lt; 27"></textarea></div>
+    <div class="campo"><label>Conduta farmacológica</label><textarea id="plFarmaco" rows="3" placeholder="Medicamentos, doses, ajustes previstos…"></textarea></div>
+    <div class="campo"><label>Estilo de vida / não farmacológico</label><textarea id="plEstilo" rows="3" placeholder="Dieta, atividade física, sono, hidratação…"></textarea></div>
+    <div class="campo"><label>Exames de acompanhamento</label><textarea id="plExames" rows="2" placeholder="Ex.: hemograma, TSH, lipidograma — periodicidade…"></textarea></div>
+    <div class="linha">
+      <div class="campo"><label>Próximo retorno</label><input id="plRetData" type="date"></div>
+      <div class="campo"><label>Observação do retorno</label><input id="plRetObs" placeholder="Ex.: trazer PA domiciliar"></div>
+    </div>
+    <div class="campo">
+      <label>Intervenções com status (adicione quantas quiser)</label>
+      <div class="linha3" style="margin-bottom:8px">
+        <input id="novoItemDesc" placeholder="Ex.: Caminhada 30 min, 5x/semana">
+        <select id="novoItemTipo"><option>Medicação</option><option>Dieta</option><option>Exame</option><option>Terapia</option><option>Outro</option></select>
+        <button class="btn btn-sec" onclick="addItemPlano()">+ Adicionar</button>
+      </div>
+      <input id="novoItemPrazo" type="date" style="width:auto" placeholder="Prazo (opcional)">
+      <div id="listaItensPlano" style="margin-top:8px"></div>
+    </div>
+    <div class="acoes-modal">
+      <button class="btn btn-sec" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-verde" onclick="salvarPlano()">Salvar plano</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal evolução -->
+<div class="modal-bg" id="modalEvo">
+  <div class="modal">
+    <h2 id="tituloModalEvo">Nova evolução</h2>
+    <div class="linha">
+      <div class="campo"><label>Data *</label><input id="eData" type="date"></div>
+      <div class="campo"><label>Tipo de atendimento *</label>
+        <select id="eTipo">
+          <option value="clin">Clínica Médica</option>
+          <option value="ger">Geriatria</option>
+        </select>
+      </div>
+    </div>
+    <div class="campo"><label>Queixa principal / motivo</label><textarea id="eQueixa" rows="2" placeholder="O paciente relata…"></textarea></div>
+    <div class="campo"><label>História / anamnese (S)</label><textarea id="eHistoria" rows="3" placeholder="Contexto, início, intensidade, fatores associados…"></textarea></div>
+    <div class="campo"><label>Exame físico / achados (O)</label><textarea id="eExame" rows="3" placeholder="PA, FC, Tx, achados relevantes…"></textarea></div>
+    <div class="campo"><label>Avaliação / hipótese (A)</label><textarea id="eAval" rows="2" placeholder="Hipótese diagnóstica, impressão clínica…"></textarea></div>
+    <div class="campo"><label>Conduta / plano (P)</label><textarea id="eConduta" rows="3" placeholder="Medicações, exames solicitados, orientações, retorno…"></textarea></div>
+    <div class="campo"><label>Prescrição (se houver)</label><textarea id="ePresc" rows="3" placeholder="Itens prescritos com dose e posologia…"></textarea></div>
+    <div class="acoes-modal">
+      <button class="btn btn-sec" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-verde" onclick="salvarEvolucao()">Salvar evolução</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal configuração IA -->
+<div class="modal-bg" id="modalConfig">
+  <div class="modal">
+    <h2>⚙️ Configuração da IA</h2>
+    <div class="dica">A IA monta a evolução a partir da transcrição da consulta. Conecte qualquer serviço compatível com o formato OpenAI (OpenAI, Groq, OpenRouter, Adapta via API…). A chave fica salva <b>apenas neste navegador</b>. Sem chave, use o botão <b>📋 Copiar prompt</b> na consulta e cole a resposta de qualquer IA.</div>
+    <div class="campo"><label>Endpoint (URL da API)</label><input id="cfgEndpoint" placeholder="https://api.openai.com/v1/chat/completions"></div>
+    <div class="linha">
+      <div class="campo"><label>Modelo</label><input id="cfgModelo" placeholder="gpt-4o-mini"></div>
+      <div class="campo"><label>Chave da API</label><input id="cfgKey" type="password" placeholder="sk-…"></div>
+    </div>
+    <div class="acoes-modal">
+      <button class="btn btn-sec" onclick="fecharModais()">Cancelar</button>
+      <button class="btn btn-primario" onclick="salvarConfig()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<!-- Barra do modo voz contínuo -->
+<div id="barraVoz">
+  <span id="vozStatus" style="font-weight:700; white-space:nowrap">🎤 <span class="gravando-dot"></span> Ouvindo…</span>
+  <div id="vozTexto" style="opacity:.9">Diga um comando: "abrir paciente …", "novo paciente", "nova consulta", "salvar"…</div>
+  <button class="btn btn-sec" onclick="pararVozContinua()">⏸ Pausar</button>
+</div>
+
+<script>
+const CHAVE='vitalquer_v1', CHAVE_CFG='vitalquer_cfg';
+let dados=carregar();
+let pacEditando=null, evoEditando=null, pacAtual=null;
+let planoEditando=null, rec=null, gravando=false, itensPlanoTmp=[];
+
+function carregar(){try{const d=JSON.parse(localStorage.getItem(CHAVE))||{pacientes:[]};d.pacientes.forEach(normalizarPac);return d;}catch(e){return{pacientes:[]}}}
+function normalizarPac(p){
+  p.evolucoes=p.evolucoes||[];
+  p.plano=p.plano||{objetivos:'',metas:'',farmaco:'',estilo:'',exames:'',retData:'',retObs:'',itens:[]};
+  p.plano.itens=p.plano.itens||[];
+}
+function salvar(){localStorage.setItem(CHAVE,JSON.stringify(dados));}
+function carregarCfg(){try{return JSON.parse(localStorage.getItem(CHAVE_CFG))||{}}catch(e){return{}}}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('mostra');setTimeout(()=>t.classList.remove('mostra'),2600);}
+function esc(s){return (s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
+function idade(nasc){if(!nasc)return null;const n=new Date(nasc),h=new Date();let i=h.getFullYear()-n.getFullYear();const m=h.getMonth()-n.getMonth();if(m<0||(m===0&&h.getDate()<n.getDate()))i--;return i;}
+function fmtData(d){if(!d)return'—';const p=d.split('-');return p.length===3?`${p[2]}/${p[1]}/${p[0]}`:d;}
+function hoje(){return new Date().toISOString().slice(0,10);}
+
+function render(){
+  const c=document.getElementById('conteudo');
+  if(pacAtual){renderFicha(c);return;}
+  const termo=(document.querySelector('.busca')?.value||'').toLowerCase();
+  let lista=dados.pacientes.filter(p=>p.nome.toLowerCase().includes(termo));
+  lista.sort((a,b)=>a.nome.localeCompare(b.nome));
+  c.innerHTML=`
+    <div class="toolbar">
+      <input class="busca" placeholder="🔍 Buscar paciente…" value="${esc(termo)}" oninput="render()">
+      <span style="color:var(--cinza);font-size:.85rem">${lista.length} paciente(s)</span>
+    </div>
+    ${lista.length===0?`<div class="vazio"><h3>Nenhum paciente ainda</h3><p style="margin-top:8px">Clique em <b>+ Novo paciente</b> para começar.</p></div>`:
+    `<div class="grid-pacientes">${lista.map(p=>{
+      const idd=idade(p.nasc);
+      const badges=[p.comorb&&`<span class="badge badge-clin">${esc(p.comorb.split(/[;,]/)[0].trim().slice(0,28))}</span>`,p.alergia&&p.alergia.toLowerCase()!=='nenhuma'&&`<span class="badge badge-alerta">⚠ ${esc(p.alergia.slice(0,24))}</span>`].filter(Boolean).join('');
+      return `<div class="card-pac" onclick="abrirFicha('${p.id}')">
+        ${p.evolucoes.length?`<span class="num-evo">${p.evolucoes.length} evo</span>`:''}
+        <h3>${esc(p.nome)}</h3>
+        <div class="meta">${idd!==null?idd+' anos · ':''}${p.sexo||''}${p.tel?' · '+esc(p.tel):''}</div>
+        <div>${badges||'<span style="color:var(--cinza);font-size:.78rem">Sem alertas</span>'}</div>
+        ${p.evolucoes.length?`<div class="meta" style="margin-top:8px">Última: ${fmtData(p.evolucoes[0].data)} · ${p.evolucoes[0].tipo==='ger'?'Geriatria':'Clínica Médica'}</div>`:''}
+      </div>`;}).join('')}</div>`}`;
+}
+
+function abrirFicha(id){
+  pacAtual=dados.pacientes.find(p=>p.id===id);
+  normalizarPac(pacAtual);
+  render();
+}
+function voltarLista(){pacAtual=null;render();}
+
+function renderFicha(c){
+  const p=pacAtual, idd=idade(p.nasc), pl=p.plano;
+  const temPlano=pl.objetivos||pl.metas||pl.farmaco||pl.estilo||pl.exames||pl.retData||pl.itens.length;
+  c.innerHTML=`
+    <div class="cabecalho-ficha">
+      <div>
+        <h2>${esc(p.nome)}</h2>
+        <div class="dados-pac">
+          ${idd!==null?`<b>${idd} anos</b> · `:''}${p.sexo||'—'} ${p.tel?' · 📞 '+esc(p.tel):''}<br>
+          <b>Comorbidades:</b> ${esc(p.comorb||'—')}<br>
+          <b>Medicamentos:</b> ${esc(p.medic||'—')}<br>
+          <b>Alergias:</b> <span style="color:${p.alergia&&p.alergia.toLowerCase()!=='nenhuma'?'#c0392b':'inherit'}">${esc(p.alergia||'—')}</span>
+          ${p.obs?`<br><b>Obs.:</b> ${esc(p.obs)}`:''}
+        </div>
+      </div>
+      <div class="btns-ficha" style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-start">
+        <button class="btn btn-ia" onclick="abrirConsulta()">🎙️ Consulta com IA</button>
+        <button class="btn btn-verde" onclick="abrirModalEvo()">+ Evolução manual</button>
+        <button class="btn btn-sec" onclick="abrirModalPaciente('${p.id}')">✏️ Editar</button>
+        <button class="btn btn-sec" onclick="window.print()">🖨️ Imprimir</button>
+        <button class="btn btn-perigo" onclick="excluirPaciente('${p.id}')">Excluir</button>
+        <button class="btn btn-sec" onclick="voltarLista()">← Voltar</button>
+      </div>
+    </div>
+
+    <div class="plano">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;flex-wrap:wrap;gap:8px">
+        <div>
+          <h3>📋 Plano de Tratamento</h3>
+          <div class="sub-plano">${pl.retData?`Próximo retorno: <b>${fmtData(pl.retData)}</b>${pl.retObs?' — '+esc(pl.retObs):''}`:'Sem retorno agendado'}</div>
+        </div>
+        <button class="btn btn-sec mini" onclick="abrirModalPlano()">✏️ Editar plano</button>
+      </div>
+      ${!temPlano?`<p class="vazio-p" style="color:var(--cinza);font-style:italic;font-size:.88rem">Plano ainda não definido — edite manualmente ou deixe a IA preencher a partir da consulta.</p>`:`
+      <div class="plano-grid">
+        ${pl.objetivos?`<div class="plano-bloco"><h4>🎯 Objetivos</h4><p>${esc(pl.objetivos)}</p></div>`:''}
+        ${pl.metas?`<div class="plano-bloco"><h4>📏 Metas terapêuticas</h4><p>${esc(pl.metas)}</p></div>`:''}
+        ${pl.farmaco?`<div class="plano-bloco"><h4>💊 Conduta farmacológica</h4><p>${esc(pl.farmaco)}</p></div>`:''}
+        ${pl.estilo?`<div class="plano-bloco"><h4>🥗 Estilo de vida</h4><p>${esc(pl.estilo)}</p></div>`:''}
+        ${pl.exames?`<div class="plano-bloco"><h4>🔬 Exames de acompanhamento</h4><p>${esc(pl.exames)}</p></div>`:''}
+      </div>
+      ${pl.itens.length?`<div style="margin-top:12px"><h4 style="font-size:.78rem;text-transform:uppercase;letter-spacing:.4px;color:var(--azul);margin-bottom:4px">Intervenções</h4>
+        ${pl.itens.map((it,i)=>`<div class="item-plano">
+          <button class="st st${it.s}" onclick="ciclarStatus(${i})">${['Pendente','Em curso','Concluído'][it.s]}</button>
+          <span class="desc">${esc(it.d)}</span>
+          <span class="tag">${esc(it.t)}</span>
+          ${it.prazo?`<span class="prazo">até ${fmtData(it.prazo)}</span>`:''}
+          <button class="del-x" onclick="delItemPlano(${i})">✕</button>
+        </div>`).join('')}</div>`:''}` }
+    </div>
+
+    ${p.evolucoes.length===0?`<div class="vazio"><h3>Sem evoluções ainda</h3><p style="margin-top:8px">Use <b>🎙️ Consulta com IA</b> para a IA montar a evolução a partir da conversa, ou registre uma manualmente.</p></div>`:
+    p.evolucoes.map((e,i)=>`
+      <div class="evolucao">
+        <div class="topo">
+          <span class="data">${fmtData(e.data)} — ${e.tipo==='ger'?'🧓 Geriatria':'🩺 Clínica Médica'}${e.origem==='ia'?' <span class="tag" style="font-size:.68rem;background:#fdeee2;color:var(--ia);border-radius:12px;padding:2px 8px;font-weight:700">✨ gerada por IA</span>':''}</span>
+          <span class="acoes-evo">
+            <button class="btn btn-sec mini" onclick="abrirModalEvo(${i})">✏️ Editar</button>
+            <button class="btn btn-perigo mini" onclick="excluirEvolucao(${i})">🗑️</button>
+          </span>
+        </div>
+        <dl>
+          ${e.queixa?`<dt>Queixa principal</dt><dd>${esc(e.queixa)}</dd>`:''}
+          ${e.historia?`<dt>História / anamnese (S)</dt><dd>${esc(e.historia)}</dd>`:''}
+          ${e.exame?`<dt>Exame físico (O)</dt><dd>${esc(e.exame)}</dd>`:''}
+          ${e.aval?`<dt>Avaliação / hipótese (A)</dt><dd>${esc(e.aval)}</dd>`:''}
+          ${e.conduta?`<dt>Conduta / plano (P)</dt><dd>${esc(e.conduta)}</dd>`:''}
+          ${e.presc?`<dt>Prescrição</dt><dd>${esc(e.presc)}</dd>`:''}
+        </dl>
+      </div>`).join('')}`;
+}
+
+/* ---- Paciente ---- */
+function abrirModalPaciente(id){
+  pacEditando=id||null;
+  const p=id?dados.pacientes.find(x=>x.id===id):null;
+  document.getElementById('tituloModalPac').textContent=p?'Editar paciente':'Novo paciente';
+  pNome.value=p?.nome||''; pNasc.value=p?.nasc||''; pTel.value=p?.tel||'';
+  pSexo.value=p?.sexo||''; pComorb.value=p?.comorb||''; pMedic.value=p?.medic||'';
+  pAlergia.value=p?.alergia||''; pObs.value=p?.obs||'';
+  document.getElementById('modalPac').classList.add('aberto');
+  setTimeout(()=>pNome.focus(),50);
+}
+function salvarPaciente(){
+  const nome=pNome.value.trim();
+  if(!nome){toast('Informe o nome do paciente');return;}
+  if(pacEditando){
+    const p=dados.pacientes.find(x=>x.id===pacEditando);
+    Object.assign(p,{nome,nasc:pNasc.value,tel:pTel.value,sexo:pSexo.value,comorb:pComorb.value.trim(),medic:pMedic.value.trim(),alergia:pAlergia.value.trim(),obs:pObs.value.trim()});
+    if(pacAtual&&pacAtual.id===p.id)pacAtual=p;
+    toast('Paciente atualizado');
+  }else{
+    const np={id:'p'+Date.now(),nome,nasc:pNasc.value,tel:pTel.value,sexo:pSexo.value,comorb:pComorb.value.trim(),medic:pMedic.value.trim(),alergia:pAlergia.value.trim(),obs:pObs.value.trim(),evolucoes:[],plano:{objetivos:'',metas:'',farmaco:'',estilo:'',exames:'',retData:'',retObs:'',itens:[]}};
+    dados.pacientes.push(np);
+    toast('Paciente cadastrado');
+  }
+  salvar();fecharModais();render();
+}
+function excluirPaciente(id){
+  if(!confirm('Excluir este paciente e TODAS as evoluções dele? Esta ação não pode ser desfeita.'))return;
+  dados.pacientes=dados.pacientes.filter(p=>p.id!==id);
+  pacAtual=null;salvar();render();toast('Paciente excluído');
+}
+
+/* ---- Evolução ---- */
+function abrirModalEvo(idx){
+  evoEditando=(idx!==undefined&&idx!==null)?idx:null;
+  const p=pacAtual;
+  const e=(idx!==undefined&&idx!==null)?p.evolucoes[idx]:null;
+  document.getElementById('tituloModalEvo').textContent=e?'Editar evolução':'Nova evolução — '+p.nome;
+  eData.value=e?.data||hoje(); eTipo.value=e?.tipo||'clin';
+  eQueixa.value=e?.queixa||''; eHistoria.value=e?.historia||''; eExame.value=e?.exame||'';
+  eAval.value=e?.aval||''; eConduta.value=e?.conduta||''; ePresc.value=e?.presc||'';
+  document.getElementById('modalEvo').classList.add('aberto');
+  setTimeout(()=>eQueixa.focus(),50);
+}
+function salvarEvolucao(){
+  const evo={data:eData.value||hoje(),tipo:eTipo.value,queixa:eQueixa.value.trim(),historia:eHistoria.value.trim(),exame:eExame.value.trim(),aval:eAval.value.trim(),conduta:eConduta.value.trim(),presc:ePresc.value.trim(),origem:evoEditando!==null?(pacAtual.evolucoes[evoEditando].origem||'manual'):'manual'};
+  if(evoEditando!==null){pacAtual.evolucoes[evoEditando]=evo;toast('Evolução atualizada');}
+  else{pacAtual.evolucoes.unshift(evo);toast('Evolução registrada');}
+  pacAtual.evolucoes.sort((a,b)=>b.data.localeCompare(a.data));
+  salvar();fecharModais();render();
+}
+function excluirEvolucao(i){
+  if(!confirm('Excluir esta evolução?'))return;
+  pacAtual.evolucoes.splice(i,1);salvar();render();toast('Evolução excluída');
+}
+
+/* ---- Consulta com IA ---- */
+function abrirConsulta(){
+  document.getElementById('tituloModalConsulta').textContent='🎙️ Consulta com IA — '+pacAtual.nome;
+  transc.value=''; respostaIA.value='';
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){document.getElementById('dicaMic').innerHTML='⚠️ Este navegador <b>não suporta ditado ao vivo</b>. Use o Chrome/Edge no computador ou Android — ou grave a consulta em outro app e cole a transcrição aqui. A IA monta a evolução do texto colado do mesmo jeito.';document.getElementById('btnMic').disabled=true;}
+  document.getElementById('modalConsulta').classList.add('aberto');
+}
+function toggleMic(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Navegador sem suporte a ditado — use Chrome');return;}
+  if(gravando){rec.stop();return;}
+  rec=new SR();rec.lang='pt-BR';rec.continuous=true;rec.interimResults=true;
+  rec.onresult=e=>{
+    let final='', parcial='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else parcial+=e.results[i][0].transcript;
+    }
+    if(final)transc.value+=(transc.value?' ':'')+final.trim();
+    document.getElementById('btnMic').innerHTML=gravando?'<span class="gravando-dot"></span>Gravando… (clique para parar)':'🎙️ Iniciar escuta';
+  };
+  rec.onend=()=>{gravando=false;document.getElementById('btnMic').textContent='🎙️ Iniciar escuta';};
+  rec.onerror=ev=>{gravando=false;document.getElementById('btnMic').textContent='🎙️ Iniciar escuta';toast('Erro no microfone: '+ev.error);};
+  rec.start();gravando=true;
+  document.getElementById('btnMic').innerHTML='<span class="gravando-dot"></span>Gravando… (clique para parar)';
+  toast('Escutando — converse normalmente com o paciente');
+}
+
+/* ---- Modo voz contínuo ---- */
+let vozRec=null, vozAtivo=false, vozPausaManual=false, vozReinicia=null;
+const COMANDOS=[
+  {re:/^(novo paciente|cadastrar paciente)\b/i, acao:()=>{fecharModais();abrirModalPaciente();return 'Abrindo cadastro de novo paciente';}},
+  {re:/^(abrir|ver)\s+(o\s+)?paciente\s+(.+)$/i, acao:(m)=>{
+      const alvo=normalizarFala(m[3]);
+      const p=dados.pacientes.find(x=>normalizarFala(x.nome).includes(alvo));
+      if(p){fecharModais();abrirFicha(p.id);return 'Abrindo ficha de '+p.nome;}
+      return 'Não encontrei paciente "'+m[3]+'" — verifique o cadastro';}},
+  {re:/^(nova consulta|consulta com ia|iniciar consulta)\b/i, acao:()=>{
+      if(!pacAtual)return 'Abra um paciente primeiro — diga "abrir paciente <nome>"';
+      fecharModais();abrirConsulta();iniciarMicConsulta();return 'Consulta com IA iniciada — pode falar';}},
+  {re:/^(nova evolu|evolu(ç|c)(ã|a)o manual)\b/i, acao:()=>{
+      if(!pacAtual)return 'Abra um paciente primeiro';
+      fecharModais();abrirModalEvo();return 'Abrindo evolução manual';}},
+  {re:/^(montar evolu|gerar evolu|mandar pra ia|enviar pra ia)\b/i, acao:()=>{
+      if(!document.getElementById('modalConsulta').classList.contains('aberto'))return 'Abra a consulta com IA primeiro';
+      gerarComIA();return 'Enviando transcrição para a IA';}},
+  {re:/^(salvar|salva|gravar evolu|salvar evolu)\b/i, acao:()=>{
+      if(document.getElementById('modalEvo').classList.contains('aberto')){salvarEvolucao();return 'Evolução salva';}
+      if(document.getElementById('modalPac').classList.contains('aberto')){salvarPaciente();return 'Paciente salvo';}
+      if(document.getElementById('modalPlano').classList.contains('aberto')){salvarPlano();return 'Plano salvo';}
+      return 'Nada aberto para salvar';}},
+  {re:/^(fechar|cancelar|voltar)\b/i, acao:()=>{
+      if(document.querySelector('.modal-bg.aberto')){fecharModais();return 'Fechado';}
+      if(pacAtual){voltarLista();return 'De volta à lista de pacientes';}
+      return 'Nada para fechar';}},
+  {re:/^(pausar|parar)\s+(escuta|voz|microfone)\b/i, acao:()=>{pararVozContinua();return 'Modo voz pausado';}},
+  {re:/^(voltar para (a )?lista|listar pacientes)\b/i, acao:()=>{fecharModais();voltarLista();return 'Lista de pacientes';}},
+];
+function normalizarFala(s){
+  return (s||'').toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .replace(/[^a-z0-9\s]/g,' ').replace(/\s+/g,' ').trim();
+}
+function interpretarComando(txt){
+  for(const c of COMANDOS){
+    const m=txt.match(c.re);
+    if(m)return c.acao(m)||'Ok';
+  }
+  return null;
+}
+function iniciarVozContinua(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  if(!SR){toast('Este navegador não suporta voz contínua — use Chrome/Edge');return;}
+  if(vozAtivo)return;
+  vozAtivo=true;vozPausaManual=false;
+  document.getElementById('barraVoz').classList.add('ativo');
+  document.getElementById('vozStatus').innerHTML='🎤 <span class="gravando-dot"></span> Ouvindo…';
+  novaVozRec();
+  toast('Modo voz ativo — fale um comando a qualquer momento');
+}
+function novaVozRec(){
+  const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+  vozRec=new SR();
+  vozRec.lang='pt-BR';vozRec.continuous=true;vozRec.interimResults=true;
+  vozRec.onresult=e=>{
+    let final='',parcial='';
+    for(let i=e.resultIndex;i<e.results.length;i++){
+      if(e.results[i].isFinal)final+=e.results[i][0].transcript;
+      else parcial+=e.results[i][0].transcript;
+    }
+    const el=document.getElementById('vozTexto');
+    if(parcial)el.innerHTML='… <span class="ouvido">'+esc(parcial)+'</span>';
+    if(final){
+      const f=final.trim();
+      el.innerHTML='Você disse: <span class="ouvido">'+esc(f)+'</span>';
+      // Se a consulta com IA está aberta, tudo vai para a transcrição
+      const consultaAberta=document.getElementById('modalConsulta').classList.contains('aberto');
+      if(consultaAberta){
+        transc.value+=(transc.value?' ':'')+f;
+        el.innerHTML='📝 Na transcrição: <span class="ouvido">'+esc(f)+'</span>';
+      }
+      const resp=interpretarComando(f);
+      if(resp){el.innerHTML='✅ <span class="cmd">'+esc(resp)+'</span>';toast(resp);}
+    }
+  };
+  vozRec.onend=()=>{
+    if(!vozAtivo)return;
+    // Reinicia sozinho — o serviço corta a cada silêncio longo
+    vozReinicia=setTimeout(novaVozRec,400);
+  };
+  vozRec.onerror=ev=>{
+    if(ev.error==='not-allowed'||ev.error==='service-not-allowed'){
+      vozAtivo=false;document.getElementById('barraVoz').classList.remove('ativo');
+      toast('Microfone bloqueado — autorize o microfone no navegador e tente de novo');
+    }else if(ev.error!=='no-speech'&&ev.error!=='aborted'&&vozAtivo){
+      vozReinicia=setTimeout(novaVozRec,800);
+    }
+  };
+  try{vozRec.start();}catch(e){}
+}
+function pararVozContinua(){
+  vozAtivo=false;vozPausaManual=true;
+  clearTimeout(vozReinicia);
+  if(vozRec)try{vozRec.stop();}catch(e){}
+  document.getElementById('barraVoz').classList.remove('ativo');
+  toast('Modo voz pausado');
+}
+function iniciarMicConsulta(){
+  // Dentro da consulta, a escuta contínua já cobre a transcrição — nada extra a fazer
+  // se o modo voz estiver ativo; caso contrário, liga o ditado do modal.
+  if(!vozAtivo)toggleMic();
+}
+
+function montarPrompt(){
+  const p=pacAtual, idd=idade(p.nasc);
+  return `Você é um médico assistente sênior, especialista em clínica médica e geriatria. Abaixo estão os dados do paciente e a transcrição da consulta entre médico e paciente. Monte a documentação clínica profissional.
+
+## Dados do paciente
+- Nome: ${p.nome}
+- Idade: ${idd!==null?idd+' anos':'não informada'} | Sexo: ${p.sexo||'não informado'}
+- Comorbidades: ${p.comorb||'—'}
+- Medicamentos em uso: ${p.medic||'—'}
+- Alergias: ${p.alergia||'—'}
+- Observações: ${p.obs||'—'}
+${p.plano&&(p.plano.objetivos||p.plano.metas||p.plano.farmaco)?`- Plano de tratamento vigente: objetivos: ${p.plano.objetivos||'—'}; metas: ${p.plano.metas||'—'}; farmacológico: ${p.plano.farmaco||'—'}`:''}
+
+## Transcrição da consulta
+"""
+${transc.value.trim()}
+"""
+
+## Tarefa
+Documente a evolução no formato SOAP, separe o que é dado objetivo (exame físico citado pelo médico) do que é relato do paciente, e proponha o plano de tratamento. Seja fiel à conversa — não invente achados que não foram mencionados; se algo importante não foi avaliado, indique no plano. Responda SOMENTE com um JSON válido, sem texto antes ou depois, neste formato exato:
+{"queixa":"queixa principal","historia":"história/anamnese (S)","exame":"exame físico/achados (O)","aval":"avaliação/hipóteses (A)","conduta":"conduta/plano (P)","prescricao":"prescrição com doses, se houver, senão string vazia","plano":{"objetivos":"","metas":"uma por linha","farmaco":"","estilo":"","exames":"","retData":"YYYY-MM-DD se mencionado, senão vazio","retObs":""}}`;
+}
+
+function extrairJSON(txt){
+  const i=txt.indexOf('{'), f=txt.lastIndexOf('}');
+  if(i===-1||f<=i)return null;
+  try{return JSON.parse(txt.slice(i,f+1));}catch(e){return null;}
+}
+
+async function gerarComIA(){
+  const t=transc.value.trim();
+  if(!t){toast('Grave ou cole a conversa primeiro');return;}
+  const cfg=carregarCfg();
+  if(!cfg.key||!cfg.endpoint){copiarPrompt();return;}
+  const btn=document.getElementById('btnIA');
+  btn.disabled=true;btn.textContent='⏳ IA montando a evolução…';
+  try{
+    const resp=await fetch(cfg.endpoint,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','Authorization':'Bearer '+cfg.key},
+      body:JSON.stringify({model:cfg.model||'gpt-4o-mini',messages:[{role:'system',content:'Você é um médico assistente sênior. Responda somente com JSON válido.'},{role:'user',content:montarPrompt()}],temperature:0.3})
+    });
+    if(!resp.ok)throw new Error('HTTP '+resp.status);
+    const data=await resp.json();
+    const txt=data.choices?.[0]?.message?.content||'';
+    aplicarRespostaIA(txt);
+  }catch(err){
+    toast('Falha na IA ('+err.message+') — use "Copiar prompt" e cole a resposta abaixo');
+  }finally{
+    btn.disabled=false;btn.textContent='✨ Montar evolução com IA';
+  }
+}
+
+function copiarPrompt(){
+  navigator.clipboard.writeText(montarPrompt()).then(
+    ()=>toast('Prompt copiado! Cole na sua IA (Adapta, ChatGPT…), copie a resposta e volte aqui'),
+    ()=>{respostaIA.value=montarPrompt();toast('Não consegui copiar — o prompt está na caixa abaixo');}
+  );
+}
+
+function usarRespostaColada(){
+  const txt=respostaIA.value.trim();
+  if(!txt){toast('Cole a resposta da IA primeiro');return;}
+  aplicarRespostaIA(txt);
+}
+
+function aplicarRespostaIA(txt){
+  const obj=extrairJSON(txt);
+  if(!obj){toast('Não encontrei um JSON válido — verifique se colou a resposta completa');return;}
+  const evo={data:hoje(),tipo:'clin',queixa:obj.queixa||'',historia:obj.historia||'',exame:obj.exame||'',aval:obj.aval||'',conduta:obj.conduta||'',presc:obj.prescricao||'',origem:'ia'};
+  pacAtual.evolucoes.unshift(evo);
+  pacAtual.evolucoes.sort((a,b)=>b.data.localeCompare(a.data));
+  if(obj.plano){
+    const pl=pacAtual.plano;
+    ['objetivos','metas','farmaco','estilo','exames','retObs'].forEach(k=>{if(obj.plano[k])pl[k]=obj.plano[k];});
+    if(obj.plano.retData&&/^\d{4}-\d{2}-\d{2}$/.test(obj.plano.retData))pl.retData=obj.plano.retData;
+  }
+  salvar();fecharModais();render();
+  toast('✨ Evolução criada pela IA — revise e edite se necessário');
+}
+
+/* ---- Plano de tratamento ---- */
+function abrirModalPlano(){
+  planoEditando=true;
+  const pl=pacAtual.plano;
+  plObj.value=pl.objetivos; plMetas.value=pl.metas; plFarmaco.value=pl.farmaco;
+  plEstilo.value=pl.estilo; plExames.value=pl.exames;
+  plRetData.value=pl.retData; plRetObs.value=pl.retObs;
+  itensPlanoTmp=JSON.parse(JSON.stringify(pl.itens));
+  renderItensPlano();
+  document.getElementById('tituloModalPlano').textContent='📋 Plano de tratamento — '+pacAtual.nome;
+  document.getElementById('modalPlano').classList.add('aberto');
+}
+function renderItensPlano(){
+  const el=document.getElementById('listaItensPlano');
+  el.innerHTML=itensPlanoTmp.length?itensPlanoTmp.map((it,i)=>`<div class="item-plano">
+      <button class="st st${it.s}" onclick="ciclarStatusTmp(${i})">${['Pendente','Em curso','Concluído'][it.s]}</button>
+      <span class="desc">${esc(it.d)}</span>
+      <span class="tag">${esc(it.t)}</span>
+      ${it.prazo?`<span class="prazo">até ${fmtData(it.prazo)}</span>`:''}
+      <button class="del-x" onclick="delItemTmp(${i})">✕</button>
+    </div>`).join(''):'<p style="color:var(--cinza);font-size:.83rem;font-style:italic">Nenhuma intervenção adicionada.</p>';
+}
+function addItemPlano(){
+  const d=novoItemDesc.value.trim();
+  if(!d){toast('Descreva a intervenção');return;}
+  itensPlanoTmp.push({d,t:novoItemTipo.value,prazo:novoItemPrazo.value,s:0});
+  novoItemDesc.value='';novoItemPrazo.value='';
+  renderItensPlano();
+}
+function delItemTmp(i){itensPlanoTmp.splice(i,1);renderItensPlano();}
+function ciclarStatusTmp(i){itensPlanoTmp[i].s=(itensPlanoTmp[i].s+1)%3;renderItensPlano();}
+function ciclarStatus(i){pacAtual.plano.itens[i].s=(pacAtual.plano.itens[i].s+1)%3;salvar();render();}
+function delItemPlano(i){pacAtual.plano.itens.splice(i,1);salvar();render();}
+function salvarPlano(){
+  const pl=pacAtual.plano;
+  pl.objetivos=plObj.value.trim(); pl.metas=plMetas.value.trim(); pl.farmaco=plFarmaco.value.trim();
+  pl.estilo=plEstilo.value.trim(); pl.exames=plExames.value.trim();
+  pl.retData=plRetData.value; pl.retObs=plRetObs.value.trim();
+  pl.itens=itensPlanoTmp;
+  salvar();fecharModais();render();toast('Plano de tratamento salvo');
+}
+
+/* ---- Config IA ---- */
+function abrirConfig(){
+  const cfg=carregarCfg();
+  cfgEndpoint.value=cfg.endpoint||'https://api.openai.com/v1/chat/completions';
+  cfgModelo.value=cfg.model||'gpt-4o-mini';
+  cfgKey.value=cfg.key||'';
+  document.getElementById('modalConfig').classList.add('aberto');
+}
+function salvarConfig(){
+  localStorage.setItem(CHAVE_CFG,JSON.stringify({endpoint:cfgEndpoint.value.trim(),model:cfgModelo.value.trim(),key:cfgKey.value.trim()}));
+  fecharModais();toast('Configuração da IA salva');
+}
+
+function fecharModais(){
+  if(gravando&&rec)rec.stop();
+  document.querySelectorAll('.modal-bg').forEach(m=>m.classList.remove('aberto'));
+}
+/* O modo voz contínuo permanece ativo mesmo com modais fechando —
+   só o ditado do modal (rec) é interrompido. */
+function alternarVozContinua(){
+  if(vozAtivo)pararVozContinua();
+  else{vozPausaManual=false;iniciarVozContinua();}
+}
+document.querySelectorAll('.modal-bg').forEach(m=>m.addEventListener('click',e=>{if(e.target===m)fecharModais();}));
+document.addEventListener('keydown',e=>{if(e.key==='Escape')fecharModais();});
+
+/* ---- Backup ---- */
+function exportarBackup(){
+  const blob=new Blob([JSON.stringify(dados,null,2)],{type:'application/json'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+  a.download='vitalquer-backup-'+hoje()+'.json';a.click();toast('Backup baixado');
+}
+function importarBackup(input){
+  const f=input.files[0];if(!f)return;
+  const r=new FileReader();
+  r.onload=()=>{try{const d=JSON.parse(r.result);if(!d.pacientes)throw 0;d.pacientes.forEach(normalizarPac);dados=d;salvar();pacAtual=null;render();toast('Backup restaurado');}catch(e){toast('Arquivo inválido');}};
+  r.readAsText(f);input.value='';
+}
+
+render();
+</script>
+</body>
+</html>
